@@ -1107,7 +1107,11 @@ public class Memory extends Observable {
 	public void deleteObserver(final Observer obs) {
 		final Iterator it = observables.iterator();
 		while (it.hasNext()) {
-			((MemoryObservable) it.next()).deleteObserver(obs);
+			MemoryObservable observable = (MemoryObservable) it.next();
+			if (observable.getPairedObserver() == obs) {
+				observable.deleteObserver(obs);
+				it.remove();
+			}
 		}
 	}
 
@@ -1152,10 +1156,12 @@ public class Memory extends Observable {
 	private class MemoryObservable extends Observable implements Comparable {
 
 		private final int lowAddress, highAddress;
+		private Observer pairedObserver;
 
 		public MemoryObservable(final Observer obs, final int startAddr, final int endAddr) {
 			lowAddress = startAddr;
 			highAddress = endAddr;
+			pairedObserver = obs;
 			this.addObserver(obs);
 		}
 
@@ -1166,6 +1172,15 @@ public class Memory extends Observable {
 		public void notifyObserver(final MemoryAccessNotice notice) {
 			setChanged();
 			this.notifyObservers(notice);
+		}
+
+		public Observer getPairedObserver() {
+			return pairedObserver;
+		}
+		@Override
+		public synchronized void deleteObserver(Observer o) {
+			super.deleteObserver(o);
+			pairedObserver = null;
 		}
 
 		// Useful to have for future refactoring, if it actually becomes worthwhile to sort
