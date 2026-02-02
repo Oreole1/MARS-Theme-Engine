@@ -16,9 +16,7 @@ import javax.swing.JOptionPane;
 import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
-import mars.mips.hardware.AccessNotice;
-import mars.mips.hardware.Memory;
-import mars.mips.hardware.MemoryAccessNotice;
+import mars.mips.hardware.*;
 
 /*
  * Copyright (c) 2010-2011, Pete Sanderson and Kenneth Vollmar
@@ -159,6 +157,12 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 		// which is interpreted in Java int as -4.
 		if (baseAddress < 0 && highAddress > -4) { highAddress = -4; }
 		addAsObserver(baseAddress, highAddress);
+		addAsObserver(RegisterFile.getUserRegister("$gp"));
+	}
+	@Override
+	protected void deleteAsObserver(){
+		super.deleteAsObserver();
+		deleteAsObserver(RegisterFile.getUserRegister("$gp"));
 	}
 
 	/**
@@ -192,7 +196,12 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 	@Override
 	protected void processMIPSUpdate(final Observable memory, final AccessNotice accessNotice) {
 		if (accessNotice.getAccessType() == AccessNotice.WRITE) {
-			updateColorForAddress((MemoryAccessNotice) accessNotice);
+			if (accessNotice instanceof MemoryAccessNotice) {
+				updateColorForAddress((MemoryAccessNotice) accessNotice);
+			} else {
+				displayBaseAddresses[1] = RegisterFile.getValue(RegisterFile.getNumber("$gp"));
+				updateBaseAddress(); // Updates the display with the contents at the new address of $gp
+			}
 		}
 	}
 
@@ -227,7 +236,11 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 	 */
 	@Override
 	protected void reset() {
-		resetCounts();
+		if (connectButton != null && connectButton.isConnected()) {
+			reloadFromMemory();
+		} else {
+			resetCounts();
+		}
 		updateDisplay();
 	}
 
@@ -335,12 +348,6 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 			// that method is called automatically  when "Connect" button is clicked for MarsTool
 			// and when "Assemble and Run" button is clicked for Mars application.
 			updateBaseAddress();
-			// If display base address is changed while connected to MIPS (this can only occur
-			// when being used as a MarsTool), we have to delete ourselves as an observer and re-register.
-			if (connectButton != null && connectButton.isConnected()) {
-				deleteAsObserver();
-				addAsObserver();
-			}
 			theGrid = createNewGrid();
 			updateDisplay();
 		});
@@ -419,6 +426,13 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 			 address anyway.  So if the value is > 10 characters long, slice off the first
 			 10 and apply Integer.parseInt() to it to get custom base address.
 		*/
+		reloadFromMemory();
+		// If display base address is changed while connected to MIPS (this can only occur
+		// when being used as a MarsTool), we have to delete ourselves as an observer and re-register.
+		if (connectButton != null && connectButton.isConnected()) {
+			deleteAsObserver();
+			addAsObserver();
+		}
 	}
 
 	// Returns Dimension object with current width and height of display area as determined
@@ -459,11 +473,25 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 	private void updateColorForAddress(final MemoryAccessNotice notice) {
 		final int address = notice.getAddress();
 		final int value = notice.getValue();
+		updateColorForAddress(address, value);
+	}
+	private void updateColorForAddress(int address, int value) {
 		final int offset = (address - baseAddress) / Memory.WORD_LENGTH_BYTES;
 		try {
 			theGrid.setElement(offset / theGrid.getColumns(), offset % theGrid.getColumns(), value);
 		} catch (final IndexOutOfBoundsException e) {
 			// If address is out of range for display, do nothing.
+		}
+	}
+	// Reloads the entire memory region at baseAddress into the grid.
+	private void reloadFromMemory() {
+		for (int i = 0; i < theGrid.getColumns() * theGrid.getRows() * 4; i = i + 4) {
+			int address = baseAddress + i;
+			try {
+				updateColorForAddress(address, Memory.getInstance().getWordNoNotify(address));
+			} catch (AddressErrorException e) {
+				throw new RuntimeException(e);
+			}
 		}
 	}
 
