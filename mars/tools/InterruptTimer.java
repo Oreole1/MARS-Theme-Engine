@@ -7,10 +7,7 @@ import java.awt.event.*;
 import java.util.Observable;
 
 import mars.*;
-import mars.mips.hardware.AccessNotice;
-import mars.mips.hardware.AddressErrorException;
-import mars.mips.hardware.Memory;
-import mars.mips.hardware.MemoryAccessNotice;
+import mars.mips.hardware.*;
 import mars.simulator.Exceptions;
 
 
@@ -163,8 +160,12 @@ public class InterruptTimer extends AbstractMarsToolAndApplication {
                 System.exit(0);
             }
         }
-        // On instruction execution in text segment
-        if (notice.getAccessType()==AccessNotice.READ && Memory.inTextSegment(notice.getAddress()) && connectButton.isConnected()) {
+        // On instruction execution in text segment while interrupts are enabled
+        if (notice.getAccessType()==AccessNotice.READ
+                && (Coprocessor0.getValue(Coprocessor0.STATUS) & 2) == 0
+                && (Coprocessor0.getValue(Coprocessor0.STATUS) & 1) == 1
+                && Memory.inTextSegment(notice.getAddress())
+                && connectButton.isConnected()) {
             // Check enable bit
             enabled = getEnableBit(CONTROL) == 1;
             // Check if current time is beyond delay and if timer is enabled
@@ -172,7 +173,7 @@ public class InterruptTimer extends AbstractMarsToolAndApplication {
                 // Update lastTime
                 lastTime = (int) System.currentTimeMillis();
                 // Send interrupt
-                mars.simulator.Simulator.externalInterruptingDevice = Exceptions.EXTERNAL_INTERRUPT_DISPLAY;
+                mars.simulator.Simulator.externalInterruptingDevice = Exceptions.EXTERNAL_INTERRUPT_TIMER;
             }
         }
 

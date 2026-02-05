@@ -17,6 +17,7 @@ import javax.swing.JPanel;
 import javax.swing.border.EmptyBorder;
 
 import mars.mips.hardware.*;
+import mars.simulator.Exceptions;
 
 /*
  * Copyright (c) 2010-2011, Pete Sanderson and Kenneth Vollmar
@@ -199,8 +200,11 @@ public class BitmapDisplay extends AbstractMarsToolAndApplication {
 			if (accessNotice instanceof MemoryAccessNotice) {
 				updateColorForAddress((MemoryAccessNotice) accessNotice);
 			} else {
-				displayBaseAddresses[1] = RegisterFile.getValue(RegisterFile.getNumber("$gp"));
-				updateBaseAddress(); // Updates the display with the contents at the new address of $gp
+				int newBaseAddress = RegisterFile.getValue(RegisterFile.getNumber("$gp"));
+				if (Memory.inDataSegment(newBaseAddress)) {
+					displayBaseAddresses[1] = RegisterFile.getValue(RegisterFile.getNumber("$gp"));
+					updateBaseAddress(); // Updates the display with the contents at the new address of $gp
+				} else mars.simulator.Simulator.externalInterruptingDevice = Exceptions.ADDRESS_EXCEPTION_LOAD;
 			}
 		}
 	}

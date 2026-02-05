@@ -54,6 +54,7 @@ public class Exceptions {
 	 */
 	public static final int EXTERNAL_INTERRUPT_KEYBOARD = 0x00000040; // see comment above.
 	public static final int EXTERNAL_INTERRUPT_DISPLAY = 0x00000080; // see comment above.
+	public static final int EXTERNAL_INTERRUPT_TIMER = 0x00000100;
 	public static final int ADDRESS_EXCEPTION_LOAD = 4;
 	public static final int ADDRESS_EXCEPTION_STORE = 5;
 	public static final int SYSCALL_EXCEPTION = 8;
